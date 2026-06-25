@@ -4,11 +4,11 @@ const wss = new WebSocket.Server({ port: process.env.PORT || 3000 });
 console.log("RPG Multiplayer Server Started!");
 
 wss.on('connection', (ws) => {
-  console.log('New Player Connected!');
+  console.log('Player Connected!');
   
   ws.on('message', (message) => {
-    // Oru player anupura data-va matha ellarukum anupurathu (broadcast)
     wss.clients.forEach((client) => {
+      // Broadcast data to everyone else
       if (client !== ws && client.readyState === WebSocket.OPEN) {
         client.send(message.toString());
       }

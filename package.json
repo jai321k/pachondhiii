@@ -1,5 +1,5 @@
 {
-  "name": "rpg-multiplayer-server",
+  "name": "pachondhiii",
   "version": "1.0.0",
   "description": "WebSocket signaling server for Godot Top-Down RPG",
   "main": "server.js",

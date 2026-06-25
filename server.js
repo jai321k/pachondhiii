@@ -1,8 +1,11 @@
 const express = require('express');
 const app = express();
 const server = require('http').createServer(app);
+
+// Inga thaan namma 'transports' update pannirukom
 const io = require('socket.io')(server, {
-    cors: { origin: "*" }
+    cors: { origin: "*" },
+    transports: ['websocket', 'polling'] 
 });
 
 // Players data store panna oru object
@@ -47,4 +50,3 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`RPG Server port ${PORT} la run aaguthu!`);
 });
-

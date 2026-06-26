@@ -36,13 +36,14 @@ wss.on('connection', (ws) => {
                 for (let roomName in availableRooms) {
                     let room = availableRooms[roomName];
                     if (room.players.length < room.maxPlayers) {
-                        ws.send(JSON.stringify({
+                        let roomInfo = {
                             type: "room_info",
                             name: roomName,
                             pass: room.pass,
                             current: room.players.length,
                             max: room.maxPlayers
-                        }));
+                        };
+                        ws.send(JSON.stringify(roomInfo));
                     }
                 }
             }
@@ -62,26 +63,30 @@ wss.on('connection', (ws) => {
                     
                     wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(lobbyMsg); });
 
-                    // 🌟 FIX: Room Full Aanathum Random Seeker Select Pandrom
+                    // Room Full aagiducha nu check panrom
                     if (room.players.length >= room.maxPlayers) {
-                        console.log(`Room ${data.room} is FULL! Starting game...`);
+                        console.log(`Room ${data.room} is FULL! Assigning roles...`);
                         
-                        // Random index-a eduthu, antha player ID-a seeker aakkurom
-                        const randomIndex = Math.floor(Math.random() * room.players.length);
-                        const assignedSeekerId = room.players[randomIndex];
+                        // 🌟 PUTHU LOGIC: Random aaga oru ID-a Seeker aaga select panrom
+                        let randomIndex = Math.floor(Math.random() * room.players.length);
+                        let selectedSeekerId = room.players[randomIndex];
+                        
+                        console.log(`Seeker Selected: ${selectedSeekerId}`);
 
                         let startMsg = JSON.stringify({
                             type: "start_game",
                             room: data.room,
                             players: room.players,
-                            seeker: assignedSeekerId // <-- Puthusa add panna data
+                            seeker_id: selectedSeekerId // 🌟 Puthusa seeker_id anuppurom
                         });
                         
                         wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(startMsg); });
+                        
                         delete availableRooms[data.room];
                     }
                 }
             }
+            
         } catch (err) {}
 
         wss.clients.forEach((client) => {

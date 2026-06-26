@@ -10,7 +10,6 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocket.Server({ server });
 
-// Room details: { roomName: { pass, maxPlayers, players: [id1, id2...] } }
 let availableRooms = {};
 
 console.log("Starting Server...");
@@ -24,42 +23,36 @@ wss.on('connection', (ws) => {
         try {
             let data = JSON.parse(msgStr);
             
-            // 1. Host Create Room
             if (data.type === "register_room") {
                 availableRooms[data.name] = {
                     pass: data.pass,
                     maxPlayers: data.max_players,
-                    players: [data.id] // Host-oda ID first add aagidum
+                    players: [data.id] 
                 };
                 console.log(`Room Created: ${data.name} (Max: ${data.max_players})`);
             }
             
-            // 2. Joiner ketkumpothu Room list anuppurathu
             if (data.type === "get_rooms") {
                 for (let roomName in availableRooms) {
                     let room = availableRooms[roomName];
-                    // Room full aagalana mattum list-la kaatta anuppuvom
                     if (room.players.length < room.maxPlayers) {
-                        let roomInfo = {
+                        ws.send(JSON.stringify({
                             type: "room_info",
                             name: roomName,
                             pass: room.pass,
                             current: room.players.length,
                             max: room.maxPlayers
-                        };
-                        ws.send(JSON.stringify(roomInfo));
+                        }));
                     }
                 }
             }
 
-            // 3. Oru player join aanathum Lobby-a update panni check pandrathu
             if (data.type === "player_joined") {
                 let room = availableRooms[data.room];
                 if (room && !room.players.includes(data.id)) {
                     room.players.push(data.id);
                     console.log(`Player joined ${data.room}. (${room.players.length}/${room.maxPlayers})`);
                     
-                    // Lobby Update-a ellarukkum anuppurom
                     let lobbyMsg = JSON.stringify({
                         type: "lobby_update",
                         room: data.room,
@@ -69,26 +62,28 @@ wss.on('connection', (ws) => {
                     
                     wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(lobbyMsg); });
 
-                    // Room Full aagiducha nu check panrom!
+                    // 🌟 FIX: Room Full Aanathum Random Seeker Select Pandrom
                     if (room.players.length >= room.maxPlayers) {
                         console.log(`Room ${data.room} is FULL! Starting game...`);
+                        
+                        // Random index-a eduthu, antha player ID-a seeker aakkurom
+                        const randomIndex = Math.floor(Math.random() * room.players.length);
+                        const assignedSeekerId = room.players[randomIndex];
+
                         let startMsg = JSON.stringify({
                             type: "start_game",
                             room: data.room,
-                            players: room.players // Ellaroda ID-iyum game-ku anuppurom (Spawning-ku thevai)
+                            players: room.players,
+                            seeker: assignedSeekerId // <-- Puthusa add panna data
                         });
                         
                         wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(startMsg); });
-                        
-                        // Game start aanathum list-la irunthu room-a thookidurom (Puthusa yaarum vara koodathu)
                         delete availableRooms[data.room];
                     }
                 }
             }
-            
         } catch (err) {}
 
-        // Normal Broadcast (Move, Paint data)
         wss.clients.forEach((client) => {
             if (client !== ws && client.readyState === WebSocket.OPEN) {
                 client.send(msgStr);

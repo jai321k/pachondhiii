@@ -26,11 +26,19 @@ wss.on('connection', (ws) => {
             if (data.type === "register_room") {
                 availableRooms[data.name] = {
                     pass: data.pass,
-                    host: data.id, // 🌟 FIX: Yaaru Host nu track panrom
+                    host: data.id, 
                     players: [data.id],
-                    settings: { hidingTime: 60, seekingTime: 180 } // Default Timers (seconds)
+                    settings: { hidingTime: 60, seekingTime: 180 } 
                 };
                 console.log(`Room Created: ${data.name} by Host: ${data.id}`);
+                
+                // 🌟 FIX: Host create panna udane Lobby-ku poga signal anuppurom
+                let lobbyMsg = JSON.stringify({
+                    type: "lobby_update",
+                    room: data.name,
+                    players: [data.id]
+                });
+                ws.send(lobbyMsg);
             }
             
             if (data.type === "get_rooms") {
@@ -41,7 +49,7 @@ wss.on('connection', (ws) => {
                         name: roomName,
                         pass: room.pass,
                         current: room.players.length,
-                        max: 10 // Arbitrary max for lobby
+                        max: 10 
                     };
                     ws.send(JSON.stringify(roomInfo));
                 }
@@ -53,7 +61,6 @@ wss.on('connection', (ws) => {
                     room.players.push(data.id);
                     console.log(`Player joined ${data.room}. Total: ${room.players.length}`);
                     
-                    // 🌟 FIX: Player join aana udane ellarukkum update anuppurom (Lobby spawn panna)
                     let lobbyMsg = JSON.stringify({
                         type: "lobby_update",
                         room: data.room,
@@ -64,7 +71,6 @@ wss.on('connection', (ws) => {
                 }
             }
 
-            // 🌟 PUTHU LOGIC: Host settings-a edit pannum pothu
             if (data.type === "update_settings") {
                 let room = availableRooms[data.room];
                 if (room && room.host === data.id) {
@@ -74,13 +80,11 @@ wss.on('connection', (ws) => {
                 }
             }
 
-            // 🌟 PUTHU LOGIC: Host "Start Match" click pannum pothu
             if (data.type === "start_match") {
                 let room = availableRooms[data.room];
                 if (room && room.host === data.id) {
                     console.log(`Host starting match for Room ${data.room}! Assigning roles...`);
                     
-                    // Seeker-a random aaga select panrom
                     let randomIndex = Math.floor(Math.random() * room.players.length);
                     let selectedSeekerId = room.players[randomIndex];
                     
@@ -95,14 +99,12 @@ wss.on('connection', (ws) => {
                     
                     wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(startMsg); });
                     
-                    // Match start aanathum list-la irunthu room-a thookiduvom (Puthusa yaarum join aaga koodathu)
                     delete availableRooms[data.room];
                 }
             }
             
         } catch (err) {}
 
-        // Movement, Paint, Eliminate broadcast pandrathu (Appadiye irukku)
         wss.clients.forEach((client) => {
             if (client !== ws && client.readyState === WebSocket.OPEN) {
                 client.send(msgStr);

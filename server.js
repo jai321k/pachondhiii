@@ -28,11 +28,16 @@ wss.on('connection', (ws) => {
                     pass: data.pass,
                     host: data.id, 
                     players: [data.id],
-                    settings: { hidingTime: 60, seekingTime: 180 } 
+                    // 🌟 FIX: Limited Hit settings-a default-a server-la add panrom
+                    settings: { 
+                        hidingTime: 60, 
+                        seekingTime: 180,
+                        limitedHit: false,
+                        totalHits: 5
+                    } 
                 };
                 console.log(`Room Created: ${data.name} by Host: ${data.id}`);
                 
-                // 🌟 FIX: Host create panna udane Lobby-ku poga signal anuppurom
                 let lobbyMsg = JSON.stringify({
                     type: "lobby_update",
                     room: data.name,
@@ -76,7 +81,10 @@ wss.on('connection', (ws) => {
                 if (room && room.host === data.id) {
                     room.settings.hidingTime = data.hidingTime;
                     room.settings.seekingTime = data.seekingTime;
-                    console.log(`Room ${data.room} Settings Update -> Hiding: ${data.hidingTime}s | Seeking: ${data.seekingTime}s`);
+                    // 🌟 FIX: Host toggles pannum pothu limitedHit and totalHits-a update panrom
+                    room.settings.limitedHit = data.limitedHit;
+                    room.settings.totalHits = data.totalHits;
+                    console.log(`Room ${data.room} Settings -> Hide: ${data.hidingTime}s | Seek: ${data.seekingTime}s | LimitedHit: ${data.limitedHit} | TotalHits: ${data.totalHits}`);
                 }
             }
 
@@ -94,7 +102,10 @@ wss.on('connection', (ws) => {
                         players: room.players,
                         seeker_id: selectedSeekerId,
                         hiding_time: room.settings.hidingTime,
-                        seeking_time: room.settings.seekingTime
+                        seeking_time: room.settings.seekingTime,
+                        // 🌟 FIX: Match start aagum pothu intha puthu variables-a ellarukum anuppurom
+                        limited_hit: room.settings.limitedHit,
+                        total_hits: room.settings.totalHits
                     });
                     
                     wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(startMsg); });

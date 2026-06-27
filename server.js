@@ -24,11 +24,14 @@ wss.on('connection', (ws) => {
             let data = JSON.parse(msgStr);
             
             if (data.type === "register_room") {
+                // 🌟 FIX: Host input panna max_players-a server-la save panrom
+                let targetPlayers = parseInt(data.max_players) || 4;
+                
                 availableRooms[data.name] = {
                     pass: data.pass,
                     host: data.id, 
                     players: [data.id],
-                    // 🌟 FIX: Limited Hit settings-a default-a server-la add panrom
+                    maxPlayers: targetPlayers, // Here!
                     settings: { 
                         hidingTime: 60, 
                         seekingTime: 180,
@@ -36,12 +39,14 @@ wss.on('connection', (ws) => {
                         totalHits: 5
                     } 
                 };
-                console.log(`Room Created: ${data.name} by Host: ${data.id}`);
+                console.log(`Room Created: ${data.name} by Host: ${data.id} | Target Players: ${targetPlayers}`);
                 
+                // Host-ku lobby details oda max_players-um sethu anuppurom
                 let lobbyMsg = JSON.stringify({
                     type: "lobby_update",
                     room: data.name,
-                    players: [data.id]
+                    players: [data.id],
+                    max_players: targetPlayers
                 });
                 ws.send(lobbyMsg);
             }
@@ -54,7 +59,7 @@ wss.on('connection', (ws) => {
                         name: roomName,
                         pass: room.pass,
                         current: room.players.length,
-                        max: 10 
+                        max: room.maxPlayers
                     };
                     ws.send(JSON.stringify(roomInfo));
                 }
@@ -64,12 +69,14 @@ wss.on('connection', (ws) => {
                 let room = availableRooms[data.room];
                 if (room && !room.players.includes(data.id)) {
                     room.players.push(data.id);
-                    console.log(`Player joined ${data.room}. Total: ${room.players.length}`);
+                    console.log(`Player joined ${data.room}. Total: ${room.players.length}/${room.maxPlayers}`);
                     
+                    // 🌟 FIX: Join aagara ellarukum max_players details share panrom
                     let lobbyMsg = JSON.stringify({
                         type: "lobby_update",
                         room: data.room,
-                        players: room.players
+                        players: room.players,
+                        max_players: room.maxPlayers
                     });
                     
                     wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(lobbyMsg); });
@@ -81,17 +88,16 @@ wss.on('connection', (ws) => {
                 if (room && room.host === data.id) {
                     room.settings.hidingTime = data.hidingTime;
                     room.settings.seekingTime = data.seekingTime;
-                    // 🌟 FIX: Host toggles pannum pothu limitedHit and totalHits-a update panrom
                     room.settings.limitedHit = data.limitedHit;
                     room.settings.totalHits = data.totalHits;
-                    console.log(`Room ${data.room} Settings -> Hide: ${data.hidingTime}s | Seek: ${data.seekingTime}s | LimitedHit: ${data.limitedHit} | TotalHits: ${data.totalHits}`);
                 }
             }
 
             if (data.type === "start_match") {
                 let room = availableRooms[data.room];
-                if (room && room.host === data.id) {
-                    console.log(`Host starting match for Room ${data.room}! Assigning roles...`);
+                // Server side security layer: Room full-aana mattum thaan start panna viduvom
+                if (room && room.host === data.id && room.players.length >= room.maxPlayers) {
+                    console.log(`Lobby Full! Host starting match for Room ${data.room}!`);
                     
                     let randomIndex = Math.floor(Math.random() * room.players.length);
                     let selectedSeekerId = room.players[randomIndex];
@@ -103,13 +109,11 @@ wss.on('connection', (ws) => {
                         seeker_id: selectedSeekerId,
                         hiding_time: room.settings.hidingTime,
                         seeking_time: room.settings.seekingTime,
-                        // 🌟 FIX: Match start aagum pothu intha puthu variables-a ellarukum anuppurom
                         limited_hit: room.settings.limitedHit,
                         total_hits: room.settings.totalHits
                     });
                     
                     wss.clients.forEach(c => { if (c.readyState === WebSocket.OPEN) c.send(startMsg); });
-                    
                     delete availableRooms[data.room];
                 }
             }
